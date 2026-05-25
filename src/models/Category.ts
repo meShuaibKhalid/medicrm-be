@@ -8,6 +8,7 @@ const categorySchema = new Schema(
     ancestors: [{ type: Types.ObjectId, ref: "Category" }],
     level: { type: Number, required: true, min: 0, default: 0 },
     isActive: { type: Boolean, default: true },
+    order: { type: Number, required: false }
   },
   { timestamps: true },
 );

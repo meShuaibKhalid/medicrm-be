@@ -3,12 +3,12 @@ import { CategoryModel } from "../models/Category";
 import { AppError } from "../utils/errors";
 import { toSlug } from "../utils/slug";
 
-export const listCategories = async () => CategoryModel.find({ isActive: true }).sort({ level: 1, name: 1 }).lean();
+export const listCategories = async () => CategoryModel.find({ isActive: true }).sort({ level: 1, order: 1, name: 1 }).lean();
 
 export const getCategoryTree = async () => {
-  const categories = await CategoryModel.find({ isActive: true }).sort({ level: 1, name: 1 }).lean();
+  const categories = await CategoryModel.find({ isActive: true }).sort({ level: 1, order: 1, name: 1 }).lean();
   const map = new Map<string, Record<string, unknown> & { children: unknown[] }>();
-
+  console.log(categories.slice(0,7))
   categories.forEach((category) => {
     map.set(String(category._id), { ...category, children: [] });
   });
@@ -20,6 +20,12 @@ export const getCategoryTree = async () => {
     } else {
       roots.push(category);
     }
+  });
+
+  roots.sort((a, b) => {
+    const dateA = a.createdAt ? new Date(a.createdAt as string | number | Date).getTime() : 0;
+    const dateB = b.createdAt ? new Date(b.createdAt as string | number | Date).getTime() : 0;
+    return dateA - dateB;
   });
 
   return roots;
