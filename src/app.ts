@@ -8,6 +8,7 @@ import categoryRoutes from "./routes/categoryRoutes";
 import orderRoutes from "./routes/orderRoutes";
 import productRoutes from "./routes/productRoutes";
 import userRoutes from "./routes/userRoutes";
+import addressRoutes from "./routes/addressRoutes";
 import { errorHandler } from "./middlewares/errorHandler";
 import { errorResponse, successResponse } from "./utils/response";
 
@@ -23,6 +24,7 @@ app.get("/health", (_req, res) => {
 
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
+app.use("/api/addresses", addressRoutes);
 app.use("/api/categories", categoryRoutes);
 app.use("/api/products", productRoutes);
 app.use("/api/cart", cartRoutes);

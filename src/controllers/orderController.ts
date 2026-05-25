@@ -3,7 +3,7 @@ import { createOrder, getMyOrder, listMyOrders } from "../services/orderService"
 import { successResponse } from "../utils/response";
 
 export const placeOrder = async (req: Request, res: Response): Promise<void> => {
-  const data = await createOrder(req.user!.id, req.body.addressId, req.body.customerNote ?? "");
+  const data = await createOrder(req.user!.id, req.body.addressId, req.body.customerNote ?? "", req.body.prescriptionUrl);
   res.status(201).json(successResponse("Done", data));
 };
 

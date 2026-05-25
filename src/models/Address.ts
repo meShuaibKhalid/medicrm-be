@@ -3,12 +3,15 @@ import { Schema, Types, model, type InferSchemaType } from "mongoose";
 const addressSchema = new Schema(
   {
     userId: { type: Types.ObjectId, ref: "User", required: true, index: true },
+    label: { type: String, enum: ["Home", "Office", "Other"], default: "Home" },
     fullName: { type: String, required: true, trim: true },
     phone: { type: String, required: true, trim: true },
     city: { type: String, required: true, trim: true },
     area: { type: String, required: true, trim: true },
     addressLine: { type: String, required: true, trim: true },
     nearestLandmark: { type: String, default: "", trim: true },
+    latitude: { type: Number, required: true },
+    longitude: { type: Number, required: true },
     isDefault: { type: Boolean, default: false },
   },
   { timestamps: true },

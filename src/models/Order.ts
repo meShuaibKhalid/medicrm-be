@@ -25,10 +25,11 @@ const orderSchema = new Schema(
     paymentMethod: { type: String, enum: ["cash_on_delivery"], default: "cash_on_delivery" },
     status: {
       type: String,
-      enum: ["pending", "confirmed", "dispatched", "delivered", "cancelled"],
+      enum: ["pending", "confirmed", "preparing", "out_for_delivery", "delivered", "cancelled"],
       default: "pending",
       index: true,
     },
+    prescriptionUrl: { type: String, default: "" },
     customerNote: { type: String, default: "", trim: true },
   },
   { timestamps: true },

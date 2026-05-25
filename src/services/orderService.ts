@@ -8,9 +8,10 @@ import { recalculateCartDocument } from "./cartService";
 
 const DELIVERY_FEE = 0;
 
-export const createOrder = async (userId: string, addressId: string, customerNote: string) => {
+export const createOrder = async (userId: string, addressId: string, customerNote: string, prescriptionUrl?: string) => {
   const address = await AddressModel.findOne({ _id: addressId, userId }).lean();
   if (!address) throw new AppError("Address not found", 404);
+  if (!address.latitude || !address.longitude) throw new AppError("Address missing location coordinates", 400);
 
   const session = await mongoose.startSession();
   let createdOrderId: mongoose.Types.ObjectId | null = null;
@@ -31,6 +32,9 @@ export const createOrder = async (userId: string, addressId: string, customerNot
         const product = productMap.get(String(item.productId));
         if (!product || !product.isActive) throw new AppError("Product not available", 400);
         if (Number(product.stock) < item.quantity) throw new AppError("Insufficient stock", 400);
+        if (product.prescriptionRequired && !prescriptionUrl) {
+          throw new AppError(`Prescription required for ${product.title}`, 400);
+        }
       }
 
       const order = await OrderModel.create(
@@ -55,6 +59,7 @@ export const createOrder = async (userId: string, addressId: string, customerNot
             deliveryFee: DELIVERY_FEE,
             grandTotal: cart.grandTotal + DELIVERY_FEE,
             customerNote,
+            prescriptionUrl: prescriptionUrl || "",
           },
         ],
         { session },

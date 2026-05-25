@@ -24,8 +24,13 @@ export const registerUser = async (payload: {
   return buildAuthResponse(user);
 };
 
-export const loginUser = async (payload: { email: string; password: string }) => {
-  const user = await UserModel.findOne({ email: payload.email.toLowerCase() });
+export const loginUser = async (payload: { identifier: string; password: string }) => {
+  const user = await UserModel.findOne({
+    $or: [
+      { email: payload.identifier.toLowerCase() },
+      { phone: payload.identifier },
+    ]
+  });
   if (!user || !user.isActive) throw new AppError("Invalid credentials", 401);
 
   const matches = await bcrypt.compare(payload.password, user.passwordHash);
