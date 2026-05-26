@@ -1,7 +1,15 @@
 import type { Request, Response } from "express";
-import { listUsers, updateUserStatus } from "../services/adminService";
+import {
+  deleteUser,
+  listUsers,
+  updateUserStatus,
+  listAdminOrders,
+  listAdminProducts,
+  listAdminCategories,
+  getDashboardStats
+} from "../services/adminService";
 import { createCategory, deleteCategory, updateCategory } from "../services/categoryService";
-import { listOrders, updateOrderStatus } from "../services/orderService";
+import { updateOrderStatus } from "../services/orderService";
 import { createProduct, deleteProduct, updateProduct } from "../services/productService";
 import { successResponse } from "../utils/response";
 
@@ -35,8 +43,13 @@ export const adminDeleteCategory = async (req: Request, res: Response): Promise<
   res.json(successResponse("Done", {}));
 };
 
-export const adminGetOrders = async (_req: Request, res: Response): Promise<void> => {
-  const data = await listOrders();
+export const adminGetOrders = async (req: Request, res: Response): Promise<void> => {
+  const search = req.query.search ? String(req.query.search) : undefined;
+  const status = req.query.status ? String(req.query.status) : undefined;
+  const page = req.query.page ? Math.max(1, Number(req.query.page)) : 1;
+  const limit = req.query.limit ? Math.max(1, Number(req.query.limit)) : 20;
+
+  const data = await listAdminOrders({ search, status, page, limit });
   res.json(successResponse("Done", data));
 };
 
@@ -45,8 +58,12 @@ export const adminPatchOrderStatus = async (req: Request, res: Response): Promis
   res.json(successResponse("Done", data));
 };
 
-export const adminGetUsers = async (_req: Request, res: Response): Promise<void> => {
-  const data = await listUsers();
+export const adminGetUsers = async (req: Request, res: Response): Promise<void> => {
+  const search = req.query.search ? String(req.query.search) : undefined;
+  const page = req.query.page ? Math.max(1, Number(req.query.page)) : 1;
+  const limit = req.query.limit ? Math.max(1, Number(req.query.limit)) : 20;
+
+  const data = await listUsers({ search, page, limit });
   res.json(successResponse("Done", data));
 };
 
@@ -54,3 +71,32 @@ export const adminPatchUserStatus = async (req: Request, res: Response): Promise
   const data = await updateUserStatus(String(req.params.id), req.body.isActive);
   res.json(successResponse("Done", data));
 };
+
+export const adminDeleteUser = async (req: Request, res: Response): Promise<void> => {
+  await deleteUser(String(req.params.id));
+  res.json(successResponse("Done", {}));
+};
+
+export const adminGetProducts = async (req: Request, res: Response): Promise<void> => {
+  const search = req.query.search ? String(req.query.search) : undefined;
+  const page = req.query.page ? Math.max(1, Number(req.query.page)) : 1;
+  const limit = req.query.limit ? Math.max(1, Number(req.query.limit)) : 20;
+
+  const data = await listAdminProducts({ search, page, limit });
+  res.json(successResponse("Done", data));
+};
+
+export const adminGetCategories = async (req: Request, res: Response): Promise<void> => {
+  const search = req.query.search ? String(req.query.search) : undefined;
+  const page = req.query.page ? Math.max(1, Number(req.query.page)) : 1;
+  const limit = req.query.limit ? Math.max(1, Number(req.query.limit)) : 20;
+
+  const data = await listAdminCategories({ search, page, limit });
+  res.json(successResponse("Done", data));
+};
+
+export const adminGetStats = async (_req: Request, res: Response): Promise<void> => {
+  const data = await getDashboardStats();
+  res.json(successResponse("Done", data));
+};
+

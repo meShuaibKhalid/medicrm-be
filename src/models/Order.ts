@@ -12,11 +12,36 @@ const orderItemSchema = new Schema(
   { _id: false },
 );
 
+const addressSnapshotSchema = new Schema(
+  {
+    fullName: { type: String, required: true },
+    phone: { type: String, required: true },
+    addressLine: { type: String, required: true },
+    city: { type: String, required: true },
+    area: { type: String, required: true },
+    nearestLandmark: { type: String },
+    latitude: { type: Number },
+    longitude: { type: Number },
+  },
+  { _id: false }
+);
+
+const userSnapshotSchema = new Schema(
+  {
+    name: { type: String, required: true },
+    email: { type: String, required: true },
+    phone: { type: String, required: true },
+  },
+  { _id: false }
+);
+
 const orderSchema = new Schema(
   {
     orderNumber: { type: String, required: true, unique: true },
     userId: { type: Types.ObjectId, ref: "User", required: true, index: true },
+    user: { type: userSnapshotSchema, required: true },
     addressId: { type: Types.ObjectId, ref: "Address", required: true },
+    address: { type: addressSnapshotSchema, required: true },
     items: { type: [orderItemSchema], default: [] },
     subtotal: { type: Number, required: true, min: 0 },
     discountTotal: { type: Number, required: true, min: 0 },
@@ -25,8 +50,8 @@ const orderSchema = new Schema(
     paymentMethod: { type: String, enum: ["cash_on_delivery"], default: "cash_on_delivery" },
     status: {
       type: String,
-      enum: ["pending", "confirmed", "preparing", "out_for_delivery", "delivered", "cancelled"],
-      default: "pending",
+      enum: ["Pending", "Done", "Cancelled"],
+      default: "Pending",
       index: true,
     },
     prescriptionUrl: { type: String, default: "" },

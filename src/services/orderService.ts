@@ -3,12 +3,16 @@ import { AddressModel } from "../models/Address";
 import { CartModel } from "../models/Cart";
 import { OrderModel } from "../models/Order";
 import { ProductModel } from "../models/Product";
+import { UserModel } from "../models/User";
 import { AppError } from "../utils/errors";
 import { recalculateCartDocument } from "./cartService";
 
 const DELIVERY_FEE = 0;
 
 export const createOrder = async (userId: string, addressId: string, customerNote: string, prescriptionUrl?: string) => {
+  const user = await UserModel.findById(userId).lean();
+  if (!user) throw new AppError("User not found", 404);
+
   const address = await AddressModel.findOne({ _id: addressId, userId }).lean();
   if (!address) throw new AppError("Address not found", 404);
   if (!address.latitude || !address.longitude) throw new AppError("Address missing location coordinates", 400);
@@ -24,12 +28,13 @@ export const createOrder = async (userId: string, addressId: string, customerNot
       await recalculateCartDocument(cart);
       if (cart.items.length === 0) throw new AppError("Cart is empty", 400);
 
-      const productIds = cart.items.map((item) => item.productId);
+      const productIds = cart.items.map((item) => item.productId?._id || item.productId);
       const products = await ProductModel.find({ _id: { $in: productIds } }).session(session);
       const productMap = new Map(products.map((product) => [String(product._id), product]));
 
       for (const item of cart.items) {
-        const product = productMap.get(String(item.productId));
+        const productIdStr = String(item.productId?._id || item.productId);
+        const product = productMap.get(productIdStr);
         if (!product || !product.isActive) throw new AppError("Product not available", 400);
         if (Number(product.stock) < item.quantity) throw new AppError("Insufficient stock", 400);
         if (product.prescriptionRequired && !prescriptionUrl) {
@@ -42,11 +47,27 @@ export const createOrder = async (userId: string, addressId: string, customerNot
           {
             orderNumber: `ORD-${Date.now()}`,
             userId,
+            user: {
+              name: user.name,
+              email: user.email,
+              phone: user.phone,
+            },
             addressId,
+            address: {
+              fullName: address.fullName,
+              phone: address.phone,
+              addressLine: address.addressLine,
+              city: address.city,
+              area: address.area,
+              nearestLandmark: address.nearestLandmark || "",
+              latitude: address.latitude,
+              longitude: address.longitude,
+            },
             items: cart.items.map((item) => {
-              const product = productMap.get(String(item.productId));
+              const productIdStr = String(item.productId?._id || item.productId);
+              const product = productMap.get(productIdStr);
               return {
-                productId: item.productId,
+                productId: item.productId?._id || item.productId,
                 title: product?.title ?? "Product",
                 quantity: item.quantity,
                 price: item.price,
@@ -69,7 +90,7 @@ export const createOrder = async (userId: string, addressId: string, customerNot
 
       for (const item of cart.items) {
         await ProductModel.updateOne(
-          { _id: item.productId },
+          { _id: item.productId?._id || item.productId },
           { $inc: { stock: -item.quantity } },
           { session },
         );

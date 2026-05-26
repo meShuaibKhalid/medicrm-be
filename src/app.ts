@@ -9,6 +9,7 @@ import orderRoutes from "./routes/orderRoutes";
 import productRoutes from "./routes/productRoutes";
 import userRoutes from "./routes/userRoutes";
 import addressRoutes from "./routes/addressRoutes";
+import wishlistRoutes from "./routes/wishlistRoutes";
 import { errorHandler } from "./middlewares/errorHandler";
 import { errorResponse, successResponse } from "./utils/response";
 
@@ -28,6 +29,7 @@ app.use("/api/addresses", addressRoutes);
 app.use("/api/categories", categoryRoutes);
 app.use("/api/products", productRoutes);
 app.use("/api/cart", cartRoutes);
+app.use("/api/wishlist", wishlistRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/admin", adminRoutes);
 

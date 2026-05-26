@@ -35,7 +35,7 @@ export const addCartItem = async (userId: string, productId: string, quantity: n
   if (quantity > stock) throw new AppError("Quantity exceeds stock", 400);
   if (maxOrder > 0 && quantity > maxOrder) throw new AppError("Quantity exceeds max order", 400);
 
-  const existingItem = cart.items.find((item: any) => String(item.productId) === productId);
+  const existingItem = cart.items.find((item: any) => String(item.productId?._id || item.productId) === productId);
   const nextQuantity = existingItem ? existingItem.quantity + quantity : quantity;
   if (nextQuantity > stock) throw new AppError("Quantity exceeds stock", 400);
   if (maxOrder > 0 && nextQuantity > maxOrder) throw new AppError("Quantity exceeds max order", 400);
@@ -50,7 +50,7 @@ export const addCartItem = async (userId: string, productId: string, quantity: n
     lineTotal: round2(salePrice * nextQuantity),
   };
 
-  cart.set("items", [...cart.items.filter((item: any) => String(item.productId) !== productId), nextItem] as CartItemInput[]);
+  cart.set("items", [...cart.items.filter((item: any) => String(item.productId?._id || item.productId) !== productId), nextItem] as CartItemInput[]);
   return recalculateCartDocument(cart);
 };
 
@@ -65,7 +65,7 @@ export const updateCartItem = async (userId: string, productId: string, quantity
   if (quantity > stock) throw new AppError("Quantity exceeds stock", 400);
   if (maxOrder > 0 && quantity > maxOrder) throw new AppError("Quantity exceeds max order", 400);
 
-  const item = cart.items.find((entry: any) => String(entry.productId) === productId);
+  const item = cart.items.find((entry: any) => String(entry.productId?._id || entry.productId) === productId);
   if (!item) throw new AppError("Cart item not found", 404);
 
   item.quantity = quantity;
@@ -79,7 +79,7 @@ export const updateCartItem = async (userId: string, productId: string, quantity
 
 export const removeCartItem = async (userId: string, productId: string) => {
   const cart = await getOrCreateCart(userId);
-  cart.set("items", cart.items.filter((item: any) => String(item.productId) !== productId) as CartItemInput[]);
+  cart.set("items", cart.items.filter((item: any) => String(item.productId?._id || item.productId) !== productId) as CartItemInput[]);
   return recalculateCartDocument(cart);
 };
 
@@ -90,13 +90,13 @@ export const clearCart = async (userId: string) => {
 };
 
 export const recalculateCartDocument = async (cart: any): Promise<any> => {
-  const productIds = cart.items.map((item: any) => item.productId);
+  const productIds = cart.items.map((item: any) => item.productId?._id || item.productId);
   const products = await ProductModel.find({ _id: { $in: productIds } }).lean();
   const productMap = new Map(products.map((product) => [String(product._id), product]));
 
   const normalizedItems = cart.items
     .map((item: any) => {
-      const product = productMap.get(String(item.productId));
+      const product = productMap.get(String(item.productId?._id || item.productId));
       if (!product || !product.isActive || Number(product.stock) <= 0) return null;
       const stock = Number(product.stock);
       const maxOrder = Number(product.maxOrder);
@@ -127,6 +127,7 @@ export const recalculateCartDocument = async (cart: any): Promise<any> => {
   cart.discountTotal = round2(cart.items.reduce((sum: number, item: any) => sum + item.discountAmount * item.quantity, 0));
   cart.grandTotal = round2(cart.items.reduce((sum: number, item: any) => sum + item.lineTotal, 0));
   await cart.save();
+  await cart.populate("items.productId");
 
   return cart;
 };

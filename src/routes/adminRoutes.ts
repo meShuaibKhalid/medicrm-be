@@ -5,11 +5,15 @@ import {
   adminDeleteCategory,
   adminDeleteProduct,
   adminGetOrders,
+  adminDeleteUser,
   adminGetUsers,
   adminPatchCategory,
   adminPatchOrderStatus,
   adminPatchProduct,
   adminPatchUserStatus,
+  adminGetProducts,
+  adminGetCategories,
+  adminGetStats,
 } from "../controllers/adminController";
 import { requireAdmin, requireAuth } from "../middlewares/auth";
 import { validate } from "../middlewares/validate";
@@ -21,7 +25,7 @@ import { productBodySchema } from "../validators/productValidators";
 import { z } from "zod";
 
 const router = Router();
-const idParamSchema = objectIdSchema.transform((id) => ({ id }));
+const idParamSchema = z.object({ id: objectIdSchema });
 
 router.use(asyncHandler(requireAuth), requireAdmin);
 router.post("/products", validate(productBodySchema), asyncHandler(adminCreateProduct));
@@ -33,11 +37,20 @@ router.delete("/categories/:id", validate(idParamSchema, "params"), asyncHandler
 router.get("/orders", asyncHandler(adminGetOrders));
 router.patch("/orders/:id/status", validate(idParamSchema, "params"), validate(updateOrderStatusSchema), asyncHandler(adminPatchOrderStatus));
 router.get("/users", asyncHandler(adminGetUsers));
+router.get("/stats", asyncHandler(adminGetStats));
+router.get("/products", asyncHandler(adminGetProducts));
+router.get("/categories", asyncHandler(adminGetCategories));
 router.patch(
   "/users/:id/status",
   validate(idParamSchema, "params"),
   validate(z.object({ isActive: z.boolean() })),
   asyncHandler(adminPatchUserStatus),
+);
+
+router.delete(
+  "/users/:id",
+  validate(idParamSchema, "params"),
+  asyncHandler(adminDeleteUser)
 );
 
 export default router;
