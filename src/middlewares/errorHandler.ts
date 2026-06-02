@@ -1,5 +1,6 @@
 import type { NextFunction, Request, Response } from "express";
 import mongoose from "mongoose";
+import multer from "multer";
 import { ZodError } from "zod";
 import { errorResponse } from "../utils/response";
 import { AppError } from "../utils/errors";
@@ -21,6 +22,11 @@ export const errorHandler = (
   }
 
   if (error instanceof mongoose.Error.ValidationError) {
+    res.status(400).json(errorResponse(error.message));
+    return;
+  }
+
+  if (error instanceof multer.MulterError) {
     res.status(400).json(errorResponse(error.message));
     return;
   }

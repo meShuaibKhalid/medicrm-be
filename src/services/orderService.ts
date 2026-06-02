@@ -28,12 +28,12 @@ export const createOrder = async (userId: string, addressId: string, customerNot
       await recalculateCartDocument(cart);
       if (cart.items.length === 0) throw new AppError("Cart is empty", 400);
 
-      const productIds = cart.items.map((item) => item.productId?._id || item.productId);
+      const productIds = cart.items.map((item: any) => item.productId?._id || item.productId);
       const products = await ProductModel.find({ _id: { $in: productIds } }).session(session);
       const productMap = new Map(products.map((product) => [String(product._id), product]));
 
       for (const item of cart.items) {
-        const productIdStr = String(item.productId?._id || item.productId);
+        const productIdStr = String((item as any).productId?._id || (item as any).productId);
         const product = productMap.get(productIdStr);
         if (!product || !product.isActive) throw new AppError("Product not available", 400);
         if (Number(product.stock) < item.quantity) throw new AppError("Insufficient stock", 400);
@@ -63,7 +63,7 @@ export const createOrder = async (userId: string, addressId: string, customerNot
               latitude: address.latitude,
               longitude: address.longitude,
             },
-            items: cart.items.map((item) => {
+            items: cart.items.map((item: any) => {
               const productIdStr = String(item.productId?._id || item.productId);
               const product = productMap.get(productIdStr);
               return {
@@ -90,7 +90,7 @@ export const createOrder = async (userId: string, addressId: string, customerNot
 
       for (const item of cart.items) {
         await ProductModel.updateOne(
-          { _id: item.productId?._id || item.productId },
+          { _id: (item as any).productId?._id || (item as any).productId },
           { $inc: { stock: -item.quantity } },
           { session },
         );

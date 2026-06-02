@@ -1,12 +1,12 @@
 import { connectDb } from "../config/db";
-import { loadProductsFromFiles, upsertBrands, upsertProducts } from "../utils/seeder";
+import { loadProductsFromFiles, upsertBrands, syncExistingProductBrands } from "../utils/seeder";
 
 const run = async () => {
   await connectDb();
   const products = await loadProductsFromFiles();
   await upsertBrands(products);
-  await upsertProducts(products);
-  process.stdout.write("Products seeded\n");
+  await syncExistingProductBrands();
+  process.stdout.write("Brands seeded\n");
   process.exit(0);
 };
 

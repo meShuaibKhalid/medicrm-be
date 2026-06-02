@@ -2,6 +2,7 @@ import { WishlistModel } from "../models/Wishlist";
 import { ProductModel } from "../models/Product";
 import { AppError } from "../utils/errors";
 import { addCartItem } from "./cartService";
+import { withSignedProductImages } from "../utils/productImages";
 
 export const getOrCreateWishlist = async (userId: string): Promise<any> => {
   const wishlist = await WishlistModel.findOneAndUpdate(
@@ -10,7 +11,7 @@ export const getOrCreateWishlist = async (userId: string): Promise<any> => {
     { new: true, upsert: true },
   ).populate("items.productId");
   
-  return wishlist;
+  return withSignedProductImages(wishlist);
 };
 
 export const addWishlistItem = async (userId: string, productId: string) => {
@@ -29,7 +30,7 @@ export const addWishlistItem = async (userId: string, productId: string) => {
     await wishlist.save();
   }
 
-  return wishlist.populate("items.productId");
+  return withSignedProductImages(await wishlist.populate("items.productId"));
 };
 
 export const removeWishlistItem = async (userId: string, productId: string) => {
@@ -42,7 +43,7 @@ export const removeWishlistItem = async (userId: string, productId: string) => {
   wishlist.items = wishlist.items.filter((item: any) => String(item.productId?._id || item.productId) !== productId) as any;
   await wishlist.save();
 
-  return wishlist.populate("items.productId");
+  return withSignedProductImages(await wishlist.populate("items.productId"));
 };
 
 export const moveWishlistItemToCart = async (userId: string, productId: string) => {
@@ -59,5 +60,5 @@ export const moveWishlistItemToCart = async (userId: string, productId: string) 
   wishlist.items.splice(itemIndex, 1);
   await wishlist.save();
 
-  return wishlist.populate("items.productId");
+  return withSignedProductImages(await wishlist.populate("items.productId"));
 };

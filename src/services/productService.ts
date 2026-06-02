@@ -1,7 +1,9 @@
 import type mongoose from "mongoose";
 import { CategoryModel } from "../models/Category";
+import { BrandModel } from "../models/Brand";
 import { ProductModel } from "../models/Product";
 import { AppError } from "../utils/errors";
+import { withSignedProductImages } from "../utils/productImages";
 import { computeSalePrice } from "../utils/pricing";
 import { toSlug } from "../utils/slug";
 
@@ -30,10 +32,45 @@ const getCategoryIdsFromQuery = async (
   return descendants.map((item) => item._id);
 };
 
+const getBrandIdFromQuery = async (brandId?: string, brandSlug?: string): Promise<mongoose.Types.ObjectId | undefined> => {
+  if (brandId) {
+    const brand = await BrandModel.findById(brandId).select("_id").lean();
+    return brand?._id;
+  }
+
+  if (brandSlug) {
+    const brand = await BrandModel.findOne({ slug: brandSlug, isActive: true }).select("_id").lean();
+    return brand?._id;
+  }
+
+  return undefined;
+};
+
+const resolveBrandReference = async (payload: { brandId?: string | null; brand?: string; brandSlug?: string }) => {
+  const incomingBrandId = payload.brandId?.trim();
+  if (incomingBrandId) {
+    const brand = await BrandModel.findById(incomingBrandId).lean();
+    if (!brand) throw new AppError("Brand not found", 404);
+    return brand;
+  }
+
+  const brandName = payload.brand?.trim() || payload.brandSlug?.trim() || "";
+  if (!brandName) return null;
+
+  const slug = toSlug(brandName);
+  return BrandModel.findOneAndUpdate(
+    { slug },
+    { $set: { name: brandName, slug, isActive: true } },
+    { upsert: true, new: true, setDefaultsOnInsert: true },
+  );
+};
+
 export const listProducts = async (query: {
   search?: string;
   categorySlug?: string;
   categoryId?: string;
+  brandSlug?: string;
+  brandId?: string;
   includeDescendants?: boolean;
   minPrice?: number;
   maxPrice?: number;
@@ -55,6 +92,8 @@ export const listProducts = async (query: {
 
   const categoryIds = await getCategoryIdsFromQuery(query.categoryId, query.categorySlug, query.includeDescendants);
   if (categoryIds) filter.categoryIds = { $in: categoryIds };
+  const brandObjectId = await getBrandIdFromQuery(query.brandId, query.brandSlug);
+  if (query.brandId || query.brandSlug) filter.brandId = brandObjectId ?? null;
 
   const sortMap = {
     price_asc: { salePrice: 1 },
@@ -69,7 +108,7 @@ export const listProducts = async (query: {
     ProductModel.countDocuments(filter),
   ]);
 
-  return {
+  return withSignedProductImages({
     items,
     pagination: {
       page: query.page,
@@ -77,22 +116,24 @@ export const listProducts = async (query: {
       total,
       totalPages: Math.ceil(total / query.limit),
     },
-  };
+  });
 };
 
 export const getProductBySlug = async (slug: string) => {
   const product = await ProductModel.findOne({ slug, isActive: true }).lean();
   if (!product) throw new AppError("Product not found", 404);
-  return product;
+  return withSignedProductImages(product);
 };
 
 export const createProduct = async (payload: {
   externalProductId?: string;
   title: string;
-  slug: string;
+  slug?: string;
   description?: string;
   image?: string;
   brand?: string;
+  brandId?: string | null;
+  brandSlug?: string;
   price: number;
   salePrice?: number;
   salePercent?: number;
@@ -106,13 +147,20 @@ export const createProduct = async (payload: {
 }) => {
   const salePercent = payload.salePercent ?? 0;
   const salePrice = computeSalePrice(payload.price, salePercent, payload.salePrice);
+  const slug = toSlug(payload.slug?.trim() || payload.title);
+  const brand = await resolveBrandReference(payload);
 
-  return ProductModel.create({
+  const product = await ProductModel.create({
     ...payload,
-    slug: toSlug(payload.slug),
+    slug,
+    brand: brand?.name ?? payload.brand?.trim() ?? "",
+    brandId: brand?._id ?? null,
+    brandSlug: brand?.slug ?? toSlug(payload.brandSlug?.trim() || payload.brand?.trim() || ""),
     salePercent,
     salePrice,
   });
+
+  return withSignedProductImages(product);
 };
 
 export const updateProduct = async (productId: string, payload: Partial<{
@@ -122,6 +170,8 @@ export const updateProduct = async (productId: string, payload: Partial<{
   description: string;
   image: string;
   brand: string;
+  brandId: string | null;
+  brandSlug: string;
   price: number;
   salePrice: number;
   salePercent: number;
@@ -138,11 +188,23 @@ export const updateProduct = async (productId: string, payload: Partial<{
 
   Object.assign(product, payload);
   if (payload.slug) product.slug = toSlug(payload.slug);
+  const hasBrandUpdate = Boolean(payload.brandId?.trim()) || Boolean(payload.brand?.trim()) || Boolean(payload.brandSlug?.trim()) || payload.brandId === null;
+  if (hasBrandUpdate) {
+    const brand = await resolveBrandReference({
+      brandId: payload.brandId ?? undefined,
+      brand: payload.brand,
+      brandSlug: payload.brandSlug,
+    });
+    product.brand = brand?.name ?? payload.brand?.trim() ?? "";
+    product.brandId = brand?._id ?? null;
+    product.brandSlug = brand?.slug ?? toSlug(payload.brandSlug?.trim() || payload.brand?.trim() || "");
+  }
   if (payload.price !== undefined || payload.salePercent !== undefined || payload.salePrice !== undefined) {
     product.salePrice = computeSalePrice(Number(product.price), Number(product.salePercent), payload.salePrice ?? Number(product.salePrice));
   }
 
-  return product.save();
+  const savedProduct = await product.save();
+  return withSignedProductImages(savedProduct);
 };
 
 export const deleteProduct = async (productId: string) => {

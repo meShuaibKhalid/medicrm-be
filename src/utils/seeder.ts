@@ -2,6 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import type mongoose from "mongoose";
 import { CategoryModel } from "../models/Category";
+import { BrandModel } from "../models/Brand";
 import { ProductModel } from "../models/Product";
 import { computeSalePrice, toBoolean, toNumber } from "./pricing";
 import { toSlug } from "./slug";
@@ -98,6 +99,49 @@ export const loadProductsFromFiles = async (): Promise<RawProduct[]> => {
   return Array.from(productsByKey.values());
 };
 
+const normalizeBrandName = (value?: string | null) => value?.trim() || "";
+
+export const upsertBrands = async (products: RawProduct[]) => {
+  const seen = new Set<string>();
+
+  for (const product of products) {
+    const brandName = normalizeBrandName(product.Brand);
+    if (!brandName) continue;
+
+    const slug = toSlug(brandName);
+    if (!slug || seen.has(slug)) continue;
+    seen.add(slug);
+
+    await BrandModel.findOneAndUpdate(
+      { slug },
+      { $set: { name: brandName, slug, isActive: true } },
+      { upsert: true, new: true, setDefaultsOnInsert: true },
+    );
+  }
+};
+
+export const syncExistingProductBrands = async () => {
+  const products = await ProductModel.find({ brand: { $ne: "" } }).select("_id brand").lean();
+
+  for (const product of products) {
+    const brandName = normalizeBrandName(product.brand as string);
+    if (!brandName) continue;
+
+    const slug = toSlug(brandName);
+    const brand = await BrandModel.findOneAndUpdate(
+      { slug },
+      { $set: { name: brandName, slug, isActive: true } },
+      { upsert: true, new: true, setDefaultsOnInsert: true },
+    );
+
+    await ProductModel.findByIdAndUpdate(product._id, {
+      brand: brand.name,
+      brandId: brand._id,
+      brandSlug: brand.slug,
+    });
+  }
+};
+
 export const findCategoryIdsForProduct = async (product: RawProduct) => {
   const candidates = [
     ...(product.scrapedCategories?.flatMap((entry) => [entry.slug, entry.originalSlug, entry.name]) ?? []),
@@ -129,6 +173,15 @@ export const normalizeProduct = async (rawProduct: RawProduct) => {
   const rawSalePrice = toNumber(rawProduct.SalePrice, price);
   const salePrice = computeSalePrice(price, salePercent, rawSalePrice);
   const categoryIds = await findCategoryIdsForProduct(rawProduct);
+  const brandName = normalizeBrandName(rawProduct.Brand);
+  const brandSlug = brandName ? toSlug(brandName) : "";
+  const brand = brandSlug
+    ? await BrandModel.findOneAndUpdate(
+        { slug: brandSlug },
+        { $set: { name: brandName, slug: brandSlug, isActive: true } },
+        { upsert: true, new: true, setDefaultsOnInsert: true },
+      )
+    : null;
 
   return {
     externalProductId: rawProduct.ProductID?.trim() || undefined,
@@ -136,7 +189,9 @@ export const normalizeProduct = async (rawProduct: RawProduct) => {
     title: rawProduct.Title?.trim() || "Untitled Product",
     image: rawProduct.ProductImage?.trim() || "",
     description: rawProduct.Description?.trim() || "",
-    brand: rawProduct.Brand?.trim() || "",
+    brand: brand?.name ?? "",
+    brandId: brand?._id ?? null,
+    brandSlug: brand?.slug ?? "",
     price,
     salePrice,
     salePercent,

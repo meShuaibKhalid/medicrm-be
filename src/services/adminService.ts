@@ -3,6 +3,7 @@ import { OrderModel } from "../models/Order";
 import { ProductModel } from "../models/Product";
 import { CategoryModel } from "../models/Category";
 import { AppError } from "../utils/errors";
+import { withSignedProductImages } from "../utils/productImages";
 
 export const listUsers = async (query: { search?: string; page: number; limit: number }) => {
   const filter: Record<string, any> = {};
@@ -56,7 +57,7 @@ export const listAdminOrders = async (query: { search?: string; status?: string;
     OrderModel.find(filter).sort({ createdAt: -1 }).skip(skip).limit(query.limit).lean(),
     OrderModel.countDocuments(filter),
   ]);
-  return {
+  return withSignedProductImages({
     items,
     pagination: {
       page: query.page,
@@ -64,7 +65,7 @@ export const listAdminOrders = async (query: { search?: string; status?: string;
       total,
       totalPages: Math.ceil(total / query.limit) || 1,
     },
-  };
+  });
 };
 
 export const listAdminProducts = async (query: { search?: string; page: number; limit: number }) => {
@@ -78,7 +79,7 @@ export const listAdminProducts = async (query: { search?: string; page: number; 
     ProductModel.find(filter).sort({ createdAt: -1 }).skip(skip).limit(query.limit).lean(),
     ProductModel.countDocuments(filter),
   ]);
-  return {
+  return withSignedProductImages({
     items,
     pagination: {
       page: query.page,
@@ -86,7 +87,7 @@ export const listAdminProducts = async (query: { search?: string; page: number; 
       total,
       totalPages: Math.ceil(total / query.limit) || 1,
     },
-  };
+  });
 };
 
 export const listAdminCategories = async (query: { search?: string; page: number; limit: number }) => {
@@ -129,5 +130,3 @@ export const getDashboardStats = async () => {
     { label: "Low stock products", value: lowStockProducts },
   ];
 };
-
-

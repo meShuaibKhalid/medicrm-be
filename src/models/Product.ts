@@ -8,6 +8,8 @@ const productSchema = new Schema(
     description: { type: String, default: "", trim: true },
     image: { type: String, default: "" },
     brand: { type: String, default: "", trim: true, index: true },
+    brandId: { type: Types.ObjectId, ref: "Brand", default: null, index: true },
+    brandSlug: { type: String, default: "", trim: true, index: true },
     price: { type: Number, required: true, min: 0 },
     salePrice: { type: Number, required: true, min: 0 },
     salePercent: { type: Number, default: 0, min: 0 },

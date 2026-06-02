@@ -1,9 +1,9 @@
 import type { Request, Response } from "express";
-import { addCartItem, clearCart, getOrCreateCart, removeCartItem, updateCartItem } from "../services/cartService";
+import { addCartItem, clearCart, getHydratedCart, removeCartItem, updateCartItem } from "../services/cartService";
 import { successResponse } from "../utils/response";
 
 export const getCart = async (req: Request, res: Response): Promise<void> => {
-  const data = await getOrCreateCart(req.user!.id);
+  const data = await getHydratedCart(req.user!.id);
   res.json(successResponse("Done", data));
 };
 

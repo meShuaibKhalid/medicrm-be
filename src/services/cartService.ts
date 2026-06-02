@@ -1,6 +1,7 @@
 import { CartModel } from "../models/Cart";
 import { ProductModel } from "../models/Product";
 import { AppError } from "../utils/errors";
+import { withSignedProductImages } from "../utils/productImages";
 import { computeDiscountAmount } from "../utils/pricing";
 
 const round2 = (value: number): number => Number(value.toFixed(2));
@@ -14,12 +15,15 @@ type CartItemInput = {
 };
 
 export const getOrCreateCart = async (userId: string): Promise<any> => {
-  const cart = await CartModel.findOneAndUpdate(
+  return CartModel.findOneAndUpdate(
     { userId },
     { $setOnInsert: { userId, items: [], subtotal: 0, discountTotal: 0, grandTotal: 0 } },
     { new: true, upsert: true },
   );
+};
 
+export const getHydratedCart = async (userId: string): Promise<any> => {
+  const cart = await getOrCreateCart(userId);
   return recalculateCartDocument(cart);
 };
 
@@ -90,8 +94,18 @@ export const clearCart = async (userId: string) => {
 };
 
 export const recalculateCartDocument = async (cart: any): Promise<any> => {
+  if (!cart.items.length) {
+    cart.subtotal = 0;
+    cart.discountTotal = 0;
+    cart.grandTotal = 0;
+    await cart.save();
+    return cart;
+  }
+
   const productIds = cart.items.map((item: any) => item.productId?._id || item.productId);
-  const products = await ProductModel.find({ _id: { $in: productIds } }).lean();
+  const products = await ProductModel.find({ _id: { $in: productIds } })
+    .select("_id title slug description image brand price salePrice salePercent stock maxOrder prescriptionRequired usedFor isActive")
+    .lean();
   const productMap = new Map(products.map((product) => [String(product._id), product]));
 
   const normalizedItems = cart.items
@@ -127,7 +141,10 @@ export const recalculateCartDocument = async (cart: any): Promise<any> => {
   cart.discountTotal = round2(cart.items.reduce((sum: number, item: any) => sum + item.discountAmount * item.quantity, 0));
   cart.grandTotal = round2(cart.items.reduce((sum: number, item: any) => sum + item.lineTotal, 0));
   await cart.save();
-  await cart.populate("items.productId");
+  await cart.populate({
+    path: "items.productId",
+    select: "_id title slug description image brand price salePrice salePercent stock maxOrder prescriptionRequired usedFor isActive",
+  });
 
-  return cart;
+  return withSignedProductImages(cart);
 };
