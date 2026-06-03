@@ -13,7 +13,7 @@ const isS3Url = (value: string) => {
     const hostname = parsed.hostname.toLowerCase();
     const pathname = parsed.pathname.toLowerCase();
 
-    return hostname.includes("s3") || pathname.includes("/s3/");
+    return (hostname.includes("s3") || pathname.includes("/s3/")) && !hostname.includes('dvago');
   } catch {
     return false;
   }
