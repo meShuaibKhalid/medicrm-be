@@ -8,8 +8,8 @@ export const addressSchema = z.object({
   area: z.string().min(1),
   addressLine: z.string().min(1),
   nearestLandmark: z.string().optional().default(""),
-  latitude: z.number(),
-  longitude: z.number(),
+  latitude: z.number().optional().nullable(),
+  longitude: z.number().optional().nullable(),
   isDefault: z.boolean().optional(),
 });
 

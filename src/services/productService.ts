@@ -7,6 +7,18 @@ import { withSignedProductImages } from "../utils/productImages";
 import { computeSalePrice } from "../utils/pricing";
 import { toSlug } from "../utils/slug";
 
+const escapeRegex = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+const buildLooseSearchPattern = (value: string) => {
+  const compact = value.replace(/[^a-z0-9]+/gi, "").trim();
+  if (!compact) return null;
+
+  return compact
+    .split("")
+    .map((char) => escapeRegex(char))
+    .join("[^a-zA-Z0-9]*");
+};
+
 const getCategoryIdsFromQuery = async (
   categoryId?: string,
   categorySlug?: string,
@@ -81,7 +93,20 @@ export const listProducts = async (query: {
   sort: "price_asc" | "price_desc" | "latest" | "title_asc";
 }) => {
   const filter: Record<string, unknown> = { isActive: true };
-  if (query.search) filter.$text = { $search: query.search };
+  if (query.search) {
+    const loosePattern = buildLooseSearchPattern(query.search);
+    if (loosePattern) {
+      const regex = new RegExp(loosePattern, "i");
+      filter.$or = [
+        { title: regex },
+        { brand: regex },
+        { usedFor: regex },
+        { slug: regex },
+      ];
+    } else {
+      filter.$text = { $search: query.search };
+    }
+  }
   if (query.minPrice !== undefined || query.maxPrice !== undefined) {
     filter.salePrice = {};
     if (query.minPrice !== undefined) (filter.salePrice as Record<string, number>).$gte = query.minPrice;

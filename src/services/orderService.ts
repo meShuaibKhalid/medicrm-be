@@ -15,7 +15,6 @@ export const createOrder = async (userId: string, addressId: string, customerNot
 
   const address = await AddressModel.findOne({ _id: addressId, userId }).lean();
   if (!address) throw new AppError("Address not found", 404);
-  if (!address.latitude || !address.longitude) throw new AppError("Address missing location coordinates", 400);
 
   const session = await mongoose.startSession();
   let createdOrderId: mongoose.Types.ObjectId | null = null;
@@ -37,9 +36,6 @@ export const createOrder = async (userId: string, addressId: string, customerNot
         const product = productMap.get(productIdStr);
         if (!product || !product.isActive) throw new AppError("Product not available", 400);
         if (Number(product.stock) < item.quantity) throw new AppError("Insufficient stock", 400);
-        if (product.prescriptionRequired && !prescriptionUrl) {
-          throw new AppError(`Prescription required for ${product.title}`, 400);
-        }
       }
 
       const order = await OrderModel.create(
@@ -60,8 +56,8 @@ export const createOrder = async (userId: string, addressId: string, customerNot
               city: address.city,
               area: address.area,
               nearestLandmark: address.nearestLandmark || "",
-              latitude: address.latitude,
-              longitude: address.longitude,
+              latitude: address.latitude ?? null,
+              longitude: address.longitude ?? null,
             },
             items: cart.items.map((item: any) => {
               const productIdStr = String(item.productId?._id || item.productId);
