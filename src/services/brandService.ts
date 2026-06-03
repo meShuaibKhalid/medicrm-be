@@ -48,11 +48,12 @@ export const getBrandProducts = async (
   query?: { page?: number; limit?: number; sort?: "price_asc" | "price_desc" | "latest" | "title_asc" },
 ) => {
   const brand = await getBrandBySlug(slug);
+  const brandId = String(brand._id);
   return listProducts({
     page: query?.page ?? 1,
     limit: query?.limit ?? 20,
     sort: query?.sort ?? "latest",
-    brandId: String((brand as { _id: string })._id),
+    brandId,
     includeDescendants: true,
   });
 };
