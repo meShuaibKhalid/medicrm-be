@@ -116,8 +116,8 @@ export const getDashboardStats = async () => {
   const [totalProducts, totalOrders, pendingOrders, completedOrders, totalUsers, lowStockProducts] = await Promise.all([
     ProductModel.countDocuments(),
     OrderModel.countDocuments(),
-    OrderModel.countDocuments({ status: "pending" }),
-    OrderModel.countDocuments({ status: "completed" }),
+    OrderModel.countDocuments({ status: "Pending" }),
+    OrderModel.countDocuments({ status: "Done" }),
     UserModel.countDocuments({ role: "user" }),
     ProductModel.countDocuments({ stock: { $lt: 20 } }),
   ]);
